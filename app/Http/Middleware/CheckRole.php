@@ -4,6 +4,7 @@ namespace App\Http\Middleware;
 
 use Closure;
 use Illuminate\Http\Request;
+use Illuminate\Support\Facades\Auth;
 
 class CheckRole
 {
@@ -13,19 +14,23 @@ class CheckRole
      * @param  \Illuminate\Http\Request  $request
      * @param  \Closure(\Illuminate\Http\Request): (\Illuminate\Http\Response|\Illuminate\Http\RedirectResponse)  $next
      * @return \Illuminate\Http\Response|\Illuminate\Http\RedirectResponse
-     */
-    public function handle(Request $request, Closure $next, ...$roles)
+       */
+    public function handle(Request $request, Closure $next, $roles)
     {
-        $user = auth()->user();
-
-        // Admin bisa akses semua fitur
-        if ($user->role === 'admin') {
-            return $next($request);
+        // Cek apakah pengguna sudah login
+        if (!Auth::check()) {
+            return redirect('/login');
         }
 
-        // Cek apakah user memiliki peran yang diizinkan
-        if (!in_array($user->role, $roles)) {
-            return response()->json(['message' => 'Anda tidak memiliki izin untuk melakukan aksi ini'], 403);
+        // Ambil pengguna yang sedang login
+        $user = Auth::user();
+
+        // Pisahkan roles yang diterima (misal: "admin|ustadz" menjadi ["admin", "ustadz"])
+        $allowedRoles = explode('|', $roles);
+
+        // Cek apakah pengguna memiliki salah satu role yang diizinkan
+        if (!in_array($user->role, $allowedRoles)) {
+            abort(403, 'Unauthorized action.');
         }
 
         return $next($request);
